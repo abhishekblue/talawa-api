@@ -1,0 +1,174 @@
+<#
+.SYNOPSIS
+    Talawa-API Automated Installer for Windows
+.DESCRIPTION
+    Installs Git, Docker, Node.js (via fnm), and pnpm using Winget and PowerShell.
+    Sets up the local environment and runs the project setup script.
+#>
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "Talawa-API Automated Installer (Windows)" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan
+
+# ----------------------------------------------------------------
+# 1. Check & Install System Dependencies (Git, Docker)
+# We use 'winget' (Windows Package Manager) or 'choco' (Chocolatey) as fallback.
+# ----------------------------------------------------------------
+
+# Determine which package manager to use
+$useWinget = $false
+$useChoco = $false
+
+if (Get-Command "winget" -ErrorAction SilentlyContinue) {
+    Write-Host "✅ Using winget (Windows Package Manager)" -ForegroundColor Green
+    $useWinget = $true
+} elseif (Get-Command "choco" -ErrorAction SilentlyContinue) {
+    Write-Host "✅ Using Chocolatey package manager" -ForegroundColor Green
+    $useChoco = $true
+} else {
+    Write-Host "No package manager found. Installing Chocolatey..." -ForegroundColor Yellow
+    Write-Host "This requires Administrator privileges." -ForegroundColor Yellow
+
+    # Install Chocolatey
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+    try {
+        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        $useChoco = $true
+
+        # Refresh environment to find choco
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    } catch {
+        Write-Error "Failed to install Chocolatey. Please install either 'winget' or 'chocolatey' manually and re-run this script."
+        exit 1
+    }
+}
+
+# Install Git
+if (-not (Get-Command "git" -ErrorAction SilentlyContinue)) {
+    Write-Host "Git not found. Installing Git..." -ForegroundColor Yellow
+    if ($useWinget) {
+        winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
+    } else {
+        choco install git -y
+    }
+
+    # Refresh Path for the current session so we can use git immediately
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+} else {
+    Write-Host "✅ Git is already installed." -ForegroundColor Green
+}
+
+# Install Docker Desktop
+if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
+    Write-Host "Docker not found. Installing Docker Desktop..." -ForegroundColor Yellow
+    if ($useWinget) {
+        winget install --id Docker.DockerDesktop -e --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
+    } else {
+        choco install docker-desktop -y
+    }
+
+    Write-Warning "--------------------------------------------------------"
+    Write-Warning "ACTION REQUIRED: Docker Desktop has been installed."
+    Write-Warning "1. Please open 'Docker Desktop' from your Start Menu."
+    Write-Warning "2. Wait until the engine is fully running (whale icon in taskbar stops animating)."
+    Write-Warning "--------------------------------------------------------"
+    Write-Host "Press Enter once Docker is running..."
+    Read-Host
+} else {
+    Write-Host "✅ Docker is installed." -ForegroundColor Green
+}
+
+# Check if Docker Daemon is actually running
+Write-Host "Checking Docker status..."
+try {
+    $dockerInfo = docker info 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "Docker daemon not responding" }
+} catch {
+    Write-Warning "Docker Desktop seems to be stopped. Please start Docker Desktop."
+    Write-Host "Press Enter once you have started it..."
+    Read-Host
+    # Check one more time
+    docker info | Out-Null
+}
+
+# ----------------------------------------------------------------
+# 2. Install FNM (Fast Node Manager)
+# ----------------------------------------------------------------
+if (-not (Get-Command "fnm" -ErrorAction SilentlyContinue)) {
+    Write-Host "Installing fnm..." -ForegroundColor Yellow
+    if ($useWinget) {
+        winget install Schniz.fnm --accept-package-agreements --accept-source-agreements --disable-interactivity
+    } else {
+        choco install fnm -y
+    }
+
+    # Refresh Path again to find fnm
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+} else {
+    Write-Host "✅ fnm is already installed." -ForegroundColor Green
+}
+
+# Initialize fnm for this session
+# We invoke the env command and evaluate the output to set variables in current scope
+fnm env --use-on-cd | Out-String | Invoke-Expression
+
+# ----------------------------------------------------------------
+# 3. Read Versions from package.json
+# PowerShell has native JSON support, so we don't need 'jq'.
+# ----------------------------------------------------------------
+if (-not (Test-Path "package.json")) {
+    Write-Error "Error: package.json not found in current directory."
+    exit 1
+}
+
+Write-Host "Reading configuration from package.json..."
+$pkg = Get-Content "package.json" -Raw | ConvertFrom-Json
+
+# Parse Node Version (handles ">=18.0.0" by extracting the first number)
+$nodeEngine = $pkg.engines.node
+$cleanNodeVer = if ($nodeEngine -match '(\d+)') { $matches[1] } else { "lts" }
+
+# Parse pnpm Version (handles "pnpm@8.x.x")
+$pnpmString = $pkg.packageManager
+if ($null -ne $pnpmString -and $pnpmString -match 'pnpm@(.*)') {
+    $pnpmVer = $matches[1]
+} else {
+    $pnpmVer = "latest"
+}
+
+Write-Host "Target Node Version: $cleanNodeVer" -ForegroundColor Cyan
+Write-Host "Target pnpm Version: $pnpmVer" -ForegroundColor Cyan
+
+# ----------------------------------------------------------------
+# 4. Install Node & pnpm
+# ----------------------------------------------------------------
+Write-Host "Installing Node.js..."
+fnm install $cleanNodeVer
+fnm use $cleanNodeVer
+
+Write-Host "Installing pnpm..."
+npm install -g "pnpm@$pnpmVer"
+
+# Configure pnpm (setup global bin directory)
+Write-Host "Configuring pnpm..."
+pnpm setup
+
+# Refresh Path to ensure pnpm global packages are accessible
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+# ----------------------------------------------------------------
+# 5. Project Setup
+# ----------------------------------------------------------------
+Write-Host "Installing project dependencies..." -ForegroundColor Yellow
+pnpm install
+
+Write-Host "Running Setup Script..." -ForegroundColor Yellow
+# Use 'pnpm exec' to ensure we use the local tsx
+pnpm exec tsx src/install/setup.ts
+
+Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host "Installation Complete!" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Cyan

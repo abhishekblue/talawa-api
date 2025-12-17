@@ -1,0 +1,122 @@
+name: Test One-Click Installer
+
+on:
+  workflow_dispatch:  # Manual trigger for testing
+  pull_request:
+    paths:
+      - 'install.sh'
+      - 'install-linux.sh'
+      - 'install-macos.sh'
+      - 'install.ps1'
+      - 'src/install/**'
+      - '.github/workflows/test-installer.yml'
+
+jobs:
+  test-windows:
+    name: Test Windows Installer
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Windows installer (CI mode)
+        shell: powershell
+        run: |
+          # Run the installer
+          .\install.ps1
+        env:
+          CI: true
+
+      - name: Verify installation
+        shell: powershell
+        run: |
+          # Check that Node was installed
+          node --version
+
+          # Check that pnpm was installed
+          pnpm --version
+
+          # Check that dependencies were installed
+          if (-not (Test-Path "node_modules")) {
+            throw "node_modules directory not found"
+          }
+
+          Write-Host "✅ Windows installation verified successfully!"
+
+  test-macos:
+    name: Test macOS Installer
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run macOS installer (CI mode)
+        run: |
+          chmod +x ./install-macos.sh
+          ./install-macos.sh
+        env:
+          CI: true
+
+      - name: Verify installation
+        run: |
+          # Source fnm and pnpm paths
+          export PATH="$HOME/.local/share/fnm:$PATH"
+          eval "$(fnm env --use-on-cd)"
+          export PNPM_HOME="$HOME/.local/share/pnpm"
+          export PATH="$PNPM_HOME:$PATH"
+
+          # Check that Node was installed
+          node --version
+
+          # Check that pnpm was installed
+          pnpm --version
+
+          # Check that dependencies were installed
+          if [ ! -d "node_modules" ]; then
+            echo "❌ node_modules directory not found"
+            exit 1
+          fi
+
+          echo "✅ macOS installation verified successfully!"
+
+  test-ubuntu:
+    name: Test Ubuntu Installer (Optional)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Ubuntu installer (CI mode)
+        run: |
+          chmod +x ./install-linux.sh
+          ./install-linux.sh
+        env:
+          CI: true
+
+      - name: Verify installation
+        run: |
+          # Source fnm and pnpm paths
+          export PATH="$HOME/.local/share/fnm:$PATH"
+          eval "$(fnm env --use-on-cd)"
+          export PNPM_HOME="$HOME/.local/share/pnpm"
+          export PATH="$PNPM_HOME:$PATH"
+
+          # Check that Node was installed
+          node --version
+
+          # Check that pnpm was installed
+          pnpm --version
+
+          # Check that dependencies were installed
+          if [ ! -d "node_modules" ]; then
+            echo "❌ node_modules directory not found"
+            exit 1
+          fi
+
+          echo "✅ Ubuntu installation verified successfully!"
