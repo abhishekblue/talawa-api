@@ -1,3 +1,5 @@
+# One time tester only
+
 name: Test One-Click Installer
 
 on:
