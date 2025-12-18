@@ -131,9 +131,14 @@ if [ ! -f "package.json" ]; then
 fi
 
 echo "Reading configuration from package.json..."
-# Extract just the version number (e.g. "18.x" -> "18")
+# Extract the full version number (e.g. "23.7.0" -> "23.7.0", ">=18.0.0" -> "18")
 NODE_VERSION=$(jq -r '.engines.node // "lts"' package.json)
-CLEAN_NODE_VERSION=$(echo "$NODE_VERSION" | grep -oE '[0-9]+' | head -1)
+# If it starts with >= or ^, extract major version. Otherwise use full version
+if [[ "$NODE_VERSION" =~ ^(\^|>=) ]]; then
+    CLEAN_NODE_VERSION=$(echo "$NODE_VERSION" | grep -oE '[0-9]+' | head -1)
+else
+    CLEAN_NODE_VERSION="$NODE_VERSION"
+fi
 
 # Extract pnpm version (e.g. "pnpm@8.1.0" -> "8.1.0")
 PNPM_FULL_STRING=$(jq -r '.packageManager' package.json)

@@ -189,9 +189,15 @@ if (-not (Test-Path "package.json")) {
 Write-Host "Reading configuration from package.json..."
 $pkg = Get-Content "package.json" -Raw | ConvertFrom-Json
 
-# Parse Node Version (handles ">=18.0.0" by extracting the first number)
+# Parse Node Version (e.g. "23.7.0" -> "23.7.0", ">=18.0.0" -> "18")
 $nodeEngine = $pkg.engines.node
-$cleanNodeVer = if ($nodeEngine -match '(\d+)') { $matches[1] } else { "lts" }
+if ($nodeEngine -match '^[\^>=]+') {
+    # Version starts with >= or ^, extract major version only
+    $cleanNodeVer = if ($nodeEngine -match '(\d+)') { $matches[1] } else { "lts" }
+} else {
+    # Exact version, use as-is
+    $cleanNodeVer = $nodeEngine
+}
 
 # Parse pnpm Version (handles "pnpm@8.x.x")
 $pnpmString = $pkg.packageManager

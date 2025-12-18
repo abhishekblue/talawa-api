@@ -101,6 +101,9 @@ async function main() {
     }
   }
 
+  console.log('\n📊 Applying database migrations...');
+  runCommand('pnpm run apply_drizzle_migrations');
+
   // Sample Data
   const dataAnswer = await inquirer.prompt([
     {

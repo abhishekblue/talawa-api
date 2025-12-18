@@ -53,9 +53,14 @@ if [ ! -f "package.json" ]; then
 fi
 
 echo "Reading configuration from package.json..."
-# Extract just the version number (e.g. "18.x" -> "18")
+# Extract the full version number (e.g. "23.7.0" -> "23.7.0", ">=18.0.0" -> "18")
 NODE_VERSION=$(jq -r '.engines.node // "lts"' package.json)
-CLEAN_NODE_VERSION=$(echo "$NODE_VERSION" | grep -oE '[0-9]+' | head -1)
+# If it starts with >= or ^, extract major version. Otherwise use full version
+if [[ "$NODE_VERSION" =~ ^(\^|>=) ]]; then
+    CLEAN_NODE_VERSION=$(echo "$NODE_VERSION" | grep -oE '[0-9]+' | head -1)
+else
+    CLEAN_NODE_VERSION="$NODE_VERSION"
+fi
 
 # Extract pnpm version (e.g. "pnpm@8.1.0" -> "8.1.0")
 PNPM_FULL_STRING=$(jq -r '.packageManager' package.json)
@@ -69,18 +74,33 @@ echo "Target Node Version: $CLEAN_NODE_VERSION"
 echo "Target pnpm Version: $PNPM_VERSION"
 
 # 4. Install Node and pnpm
-echo "Installing Node.js..."
-fnm install $CLEAN_NODE_VERSION
-fnm use $CLEAN_NODE_VERSION
-
 echo "Installing pnpm..."
 npm install -g "pnpm@$PNPM_VERSION"
 
-# Configure pnpm (setup global bin directory)
-echo "Configuring pnpm..."
-pnpm setup
+# FORCEFULLY configure .bashrc (fixes the EC2 issue)
+echo "Configuring pnpm path in .bashrc..."
+SHELL_CONFIG="$HOME/.bashrc"
 
-# Add pnpm to PATH for current session
+# Create the config lines
+PNPM_BLOCK='
+# pnpm
+export PNPM_HOME="$HOME/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+'
+
+# Append to .bashrc only if not already there
+if ! grep -q "PNPM_HOME" "$SHELL_CONFIG"; then
+    echo "$PNPM_BLOCK" >> "$SHELL_CONFIG"
+    echo "✅ Added pnpm to $SHELL_CONFIG"
+else
+    echo "ℹ️  pnpm already configured in $SHELL_CONFIG"
+fi
+
+# Apply to CURRENT script session so the rest of the script works
 export PNPM_HOME="$HOME/.local/share/pnpm"
 export PATH="$PNPM_HOME:$PATH"
 
@@ -96,3 +116,5 @@ pnpm exec tsx src/install/setupLocal.ts
 echo "=========================================="
 echo "Installation Complete!"
 echo "=========================================="
+
+exec "$SHELL"
