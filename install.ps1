@@ -1,9 +1,21 @@
 <#
 .SYNOPSIS
-    Talawa-API Automated Installer for Windows
+    Talawa-API Automated Installer for Windows (PowerShell)
 .DESCRIPTION
     Installs Git, Docker, Node.js (via fnm), and pnpm using Winget and PowerShell.
     Sets up the local environment and runs the project setup script.
+
+.NOTES
+    RECOMMENDED: Use Windows Subsystem for Linux (WSL) instead!
+    For WSL users, please use install-windows.sh instead of this PowerShell script.
+
+    This PowerShell script is provided as an alternative for users who prefer
+    native Windows installation without WSL.
+
+    To run this script:
+    1. Open PowerShell (not Git Bash or WSL)
+    2. Navigate to the talawa-api directory
+    3. Run: .\install.ps1
 #>
 
 $ErrorActionPreference = "Stop"
@@ -240,3 +252,8 @@ pnpm exec tsx src/install/setupLocal.ts
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "Installation Complete!" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "IMPORTANT: Please restart your PowerShell terminal for PATH changes to take effect." -ForegroundColor Yellow
+Write-Host "After restarting, you can use pnpm commands globally." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "To restart PowerShell now, close this window and open a new PowerShell terminal." -ForegroundColor Cyan

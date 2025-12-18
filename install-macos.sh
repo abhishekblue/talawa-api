@@ -179,3 +179,5 @@ pnpm exec tsx src/install/setupLocal.ts
 echo "=========================================="
 echo "Installation Complete!"
 echo "=========================================="
+
+exec "$SHELL"

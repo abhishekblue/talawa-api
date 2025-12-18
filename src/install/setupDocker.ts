@@ -71,7 +71,8 @@ async function main() {
   runCommand('docker exec talawa-api-1 /bin/bash -c "nohup pnpm run start_development_server > /dev/null 2>&1 &"');
 
   console.log('\n⏳ Waiting for server to start...');
-  runCommand('sleep 5');
+  // Cross-platform sleep - works on Windows, macOS, and Linux
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
   console.log('\n✅ DevContainer Setup Complete!');
   console.log('------------------------------------------------');

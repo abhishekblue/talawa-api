@@ -125,7 +125,8 @@ async function main() {
       if (retries === 0) {
         console.log('⚠️  Database may not be fully ready, continuing anyway...');
       } else {
-        execSync('sleep 2', { stdio: 'ignore' });
+        // Cross-platform sleep - works on Windows, macOS, and Linux
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
   }
@@ -153,7 +154,7 @@ async function main() {
       console.log('   pnpm run add:sample_data');
     }
   }
-const startAnswer = await inquirer.prompt([
+  const startAnswer = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'startServer',
@@ -164,13 +165,16 @@ const startAnswer = await inquirer.prompt([
 
   if (startAnswer.startServer) {
     console.log('\n🚀 Starting Development Server...');
+    // We use stdio: 'inherit' so the user interacts with the server directly
     try {
-      // stdio: 'inherit' lets the user see logs and interact (Ctrl+C to stop)
-      execSync('pnpm run start_development_server', { stdio: 'inherit' });
-    } catch (error) {
-      // Catch allows the script to finish gracefully if user stops server with Ctrl+C
-      console.log('\nServer stopped.');
+        // This works because the script context ALREADY has the correct PATH
+        execSync('pnpm run start_development_server', { stdio: 'inherit' });
+    } catch (e) {
+        // This catch block handles when the user presses Ctrl+C to stop the server
+        console.log('\nServer stopped.');
     }
+  } else {
+      console.log('⚠️  Restart your terminal to use pnpm manually.');
   }
 }
 
