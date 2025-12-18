@@ -124,17 +124,25 @@ async function main() {
       console.log('   pnpm run add:sample_data');
     }
   }
+const startAnswer = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'startServer',
+      message: 'Do you want to start the development server now?',
+      default: true,
+    },
+  ]);
 
-  console.log('\n✅ Setup Complete!');
-  console.log('------------------------------------------------');
-  console.log('⚠️  IMPORTANT: Reload your shell to use pnpm:');
-  console.log('');
-  console.log('   exec $SHELL');
-  console.log('   (or close and reopen your terminal)');
-  console.log('');
-  console.log('Then start the development server:');
-  console.log('   pnpm run start_development_server');
-  console.log('------------------------------------------------');
+  if (startAnswer.startServer) {
+    console.log('\n🚀 Starting Development Server...');
+    try {
+      // stdio: 'inherit' lets the user see logs and interact (Ctrl+C to stop)
+      execSync('pnpm run start_development_server', { stdio: 'inherit' });
+    } catch (error) {
+      // Catch allows the script to finish gracefully if user stops server with Ctrl+C
+      console.log('\nServer stopped.');
+    }
+  }
 }
 
 main();
