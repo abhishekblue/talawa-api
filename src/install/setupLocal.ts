@@ -53,17 +53,16 @@ async function main() {
 console.log('🔄 Adjusting .env for local machine access...');
 
   envContent = envContent
-    // Database Host Replacements (Exact matches from your .env file)
-    .replace('API_MINIO_END_POINT=minio', 'API_MINIO_END_POINT=localhost')
-    .replace('API_MINIO_TEST_END_POINT=minio-test', 'API_MINIO_TEST_END_POINT=localhost')
-    .replace('API_POSTGRES_HOST=postgres', 'API_POSTGRES_HOST=localhost')
-    .replace('API_POSTGRES_TEST_HOST=postgres-test', 'API_POSTGRES_TEST_HOST=localhost')
-    .replace('API_REDIS_HOST=redis', 'API_REDIS_HOST=localhost')
-    .replace('API_REDIS_TEST_HOST=redis-test', 'API_REDIS_TEST_HOST=localhost')
+    .replace(/API_MINIO_END_POINT=.*/g, 'API_MINIO_END_POINT=localhost')
+    .replace(/API_MINIO_TEST_END_POINT=.*/g, 'API_MINIO_TEST_END_POINT=localhost')
+    .replace(/API_POSTGRES_HOST=.*/g, 'API_POSTGRES_HOST=localhost')
+    .replace(/API_POSTGRES_TEST_HOST=.*/g, 'API_POSTGRES_TEST_HOST=localhost')
+    .replace(/API_REDIS_HOST=.*/g, 'API_REDIS_HOST=localhost')
+    .replace(/API_REDIS_TEST_HOST=.*/g, 'API_REDIS_TEST_HOST=localhost')
 
-    // Profile Replacement: Only start databases, exclude API/Caddy
+    // Profile Replacement
     .replace(
-      'COMPOSE_PROFILES=api,caddy,cloudbeaver,minio,minio_test,postgres,postgres_test,redis_test,redis', 
+      /^COMPOSE_PROFILES=.*/gm, 
       'COMPOSE_PROFILES=minio,minio_test,postgres,postgres_test,redis_test,redis'
     );
 
