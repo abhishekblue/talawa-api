@@ -636,6 +636,7 @@ export async function caddySetup(answers: SetupAnswers): Promise<SetupAnswers> {
 export async function setup(): Promise<SetupAnswers> {
 	const initialCI = process.env.CI;
 	let answers: SetupAnswers = {};
+
 	if (checkEnvFile()) {
 		const envReconfigure = await promptConfirm(
 			"envReconfigure",

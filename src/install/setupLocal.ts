@@ -27,7 +27,7 @@ const runCommand = (command: string, throwOnError = true) => {
       finalCommand = `sudo ${command}`;
       console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
     }
-    execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR });
+    execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
   } catch (error) {
     console.error(`❌ Command failed: ${command}`);
     if (throwOnError) {
@@ -48,25 +48,28 @@ async function main() {
     process.exit(1);
   }
 
-  let envContent = fs.readFileSync(ENV_DEV_SOURCE, 'utf-8');
+  console.log('\n⚙️  Running database setup (generating JWT secret, configuring services)...');
+  // Let setup.ts run normally and ask all questions
+  runCommand('pnpm tsx setup.ts');
 
-  console.log('🔄 Adjusting .env for local machine access...');
+  console.log('\n🔄 Adjusting .env for local machine access...');
+  // NOW read the .env file that setup.ts just created
+  let envContent = fs.readFileSync(ENV_DEST, 'utf-8');
 
-  // 1. Split file into lines
+  // Split file into lines
   const lines = envContent.split(/\r?\n/);
 
-  // 2. DEFINE KEYS TO NUKE
-  // We will remove ANY line that starts with these keys, regardless of what follows.
+  // DEFINE KEYS TO OVERRIDE - these must point to localhost for local setup
   const keysToReset = [
-    'API_POSTGRES_HOST', 
+    'API_POSTGRES_HOST',
     'API_POSTGRES_TEST_HOST',
-    'API_REDIS_HOST', 
+    'API_REDIS_HOST',
     'API_REDIS_TEST_HOST',
-    'API_MINIO_END_POINT', 
+    'API_MINIO_END_POINT',
     'API_MINIO_TEST_END_POINT'
   ];
 
-  // 3. DELETE OLD KEYS (Filter them out completely)
+  // DELETE OLD KEYS (Filter them out completely)
   const cleanLines = lines.filter(line => {
     // Get the key part (before the =)
     const key = (line.split('=')[0] ?? '').trim();
@@ -74,7 +77,7 @@ async function main() {
     return !keysToReset.includes(key);
   });
 
-  // 4. APPEND NEW CORRECT VALUES
+  // APPEND NEW CORRECT VALUES (localhost instead of container names)
   cleanLines.push('API_POSTGRES_HOST=localhost');
   cleanLines.push('API_POSTGRES_TEST_HOST=localhost');
   cleanLines.push('API_REDIS_HOST=localhost');
@@ -82,21 +85,18 @@ async function main() {
   cleanLines.push('API_MINIO_END_POINT=localhost');
   cleanLines.push('API_MINIO_TEST_END_POINT=localhost');
 
-  // 5. Rejoin the file
+  // Rejoin the file
   envContent = cleanLines.join('\n');
 
-  // 6. Fix Docker Profiles (Safe regex)
+  // Fix Docker Profiles to exclude API service (runs on host, not in Docker)
   envContent = envContent.replace(
-    /^COMPOSE_PROFILES=.*/gm, 
+    /^COMPOSE_PROFILES=.*/gm,
     'COMPOSE_PROFILES=minio,minio_test,postgres,postgres_test,redis_test,redis'
   );
 
-  // Write file
+  // Write the modified .env file
   fs.writeFileSync(ENV_DEST, envContent);
-  console.log('✅ .env Rewritten: Old keys deleted, localhost keys added.');
-
-  console.log('\n⚙️  Running database setup...');
-  runCommand('pnpm tsx setup.ts');
+  console.log('✅ .env updated: Database services point to localhost');
 
   console.log('\n📦 Installing DevContainer CLI...');
   runCommand('pnpm install -g @devcontainers/cli');
