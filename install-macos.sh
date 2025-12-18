@@ -34,8 +34,15 @@ if ! command -v docker &> /dev/null; then
     echo "Press [Enter] to accept and continue, or Ctrl+C to cancel..."
     read -r
 
-    # Download Docker Desktop DMG
-    DOCKER_DMG_URL="https://desktop.docker.com/mac/main/amd64/Docker.dmg"
+    # Download Docker Desktop DMG (detect architecture)
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "arm64" ]; then
+        DOCKER_DMG_URL="https://desktop.docker.com/mac/main/arm64/Docker.dmg"
+        echo "Detected Apple Silicon (ARM64)"
+    else
+        DOCKER_DMG_URL="https://desktop.docker.com/mac/main/amd64/Docker.dmg"
+        echo "Detected Intel (AMD64)"
+    fi
     echo "Downloading Docker Desktop..."
     curl -L -o /tmp/Docker.dmg "$DOCKER_DMG_URL"
 
