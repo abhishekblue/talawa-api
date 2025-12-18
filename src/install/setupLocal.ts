@@ -19,7 +19,7 @@ const needsSudoForDocker = (): boolean => {
 };
 
 // Helper for shell commands
-const runCommand = (command: string) => {
+const runCommand = (command: string, throwOnError = true) => {
   try {
     // Auto-prefix docker commands with sudo if needed
     let finalCommand = command;
@@ -30,7 +30,11 @@ const runCommand = (command: string) => {
     execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR });
   } catch (error) {
     console.error(`❌ Command failed: ${command}`);
-    process.exit(1);
+    if (throwOnError) {
+      process.exit(1);
+    } else {
+      throw error;
+    }
   }
 };
 
@@ -79,6 +83,24 @@ async function main() {
   console.log('\n🐳 Starting Database Containers...');
   runCommand('devcontainer up --workspace-folder .');
 
+  console.log('\n⏳ Waiting for database services to be healthy...');
+  // Wait for postgres to be ready (max 20 seconds)
+  let retries = 10;
+  while (retries > 0) {
+    try {
+      execSync('docker exec talawa-postgres-1 pg_isready -U postgres', { stdio: 'ignore' });
+      console.log('✅ Database services are ready');
+      break;
+    } catch {
+      retries--;
+      if (retries === 0) {
+        console.log('⚠️  Database may not be fully ready, continuing anyway...');
+      } else {
+        execSync('sleep 2', { stdio: 'ignore' });
+      }
+    }
+  }
+
   // Sample Data
   const dataAnswer = await inquirer.prompt([
     {
@@ -91,12 +113,23 @@ async function main() {
 
   if (dataAnswer.addSampleData) {
     console.log('\n🌱 Seeding Sample Data...');
-    runCommand('pnpm run add:sample_data');
+    try {
+      runCommand('pnpm run add:sample_data', false);
+      console.log('✅ Sample data seeded successfully');
+    } catch (error) {
+      console.log('⚠️  Sample data seeding failed, but you can run it manually later:');
+      console.log('   pnpm run add:sample_data');
+    }
   }
 
   console.log('\n✅ Setup Complete!');
   console.log('------------------------------------------------');
-  console.log('To start the server, run:');
+  console.log('⚠️  IMPORTANT: Reload your shell to use pnpm:');
+  console.log('');
+  console.log('   exec $SHELL');
+  console.log('   (or close and reopen your terminal)');
+  console.log('');
+  console.log('Then start the development server:');
   console.log('   pnpm run start_development_server');
   console.log('------------------------------------------------');
 }
