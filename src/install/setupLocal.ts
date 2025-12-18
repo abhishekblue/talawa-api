@@ -50,39 +50,50 @@ async function main() {
 
   let envContent = fs.readFileSync(ENV_DEV_SOURCE, 'utf-8');
 
-console.log('🔄 Adjusting .env for local machine access...');
-
   console.log('🔄 Adjusting .env for local machine access...');
 
-  // 1. Split file into lines to avoid Regex failures
+  // 1. Split file into lines
   const lines = envContent.split(/\r?\n/);
-  
-  // 2. Process every line manually
-  const updatedLines = lines.map(line => {
-      const trimmed = line.trim(); // Remove hidden whitespace
-      
-      // Force replacement if the key matches
-      if (trimmed.startsWith('API_POSTGRES_HOST=')) return 'API_POSTGRES_HOST=localhost';
-      if (trimmed.startsWith('API_POSTGRES_TEST_HOST=')) return 'API_POSTGRES_TEST_HOST=localhost';
-      if (trimmed.startsWith('API_REDIS_HOST=')) return 'API_REDIS_HOST=localhost';
-      if (trimmed.startsWith('API_REDIS_TEST_HOST=')) return 'API_REDIS_TEST_HOST=localhost';
-      if (trimmed.startsWith('API_MINIO_END_POINT=')) return 'API_MINIO_END_POINT=localhost';
-      if (trimmed.startsWith('API_MINIO_TEST_END_POINT=')) return 'API_MINIO_TEST_END_POINT=localhost';
-      
-      return line; // Keep other lines same
-  });
-  
-  // 3. Rejoin the file
-  envContent = updatedLines.join('\n');
 
-  // 4. Fix the Docker Profile (this regex is safe)
+  // 2. DEFINE KEYS TO NUKE
+  // We will remove ANY line that starts with these keys, regardless of what follows.
+  const keysToReset = [
+    'API_POSTGRES_HOST', 
+    'API_POSTGRES_TEST_HOST',
+    'API_REDIS_HOST', 
+    'API_REDIS_TEST_HOST',
+    'API_MINIO_END_POINT', 
+    'API_MINIO_TEST_END_POINT'
+  ];
+
+  // 3. DELETE OLD KEYS (Filter them out completely)
+  const cleanLines = lines.filter(line => {
+    // Get the key part (before the =)
+    const key = (line.split('=')[0] ?? '').trim();
+    // If this line is one of our keys, TRASH IT.
+    return !keysToReset.includes(key);
+  });
+
+  // 4. APPEND NEW CORRECT VALUES
+  cleanLines.push('API_POSTGRES_HOST=localhost');
+  cleanLines.push('API_POSTGRES_TEST_HOST=localhost');
+  cleanLines.push('API_REDIS_HOST=localhost');
+  cleanLines.push('API_REDIS_TEST_HOST=localhost');
+  cleanLines.push('API_MINIO_END_POINT=localhost');
+  cleanLines.push('API_MINIO_TEST_END_POINT=localhost');
+
+  // 5. Rejoin the file
+  envContent = cleanLines.join('\n');
+
+  // 6. Fix Docker Profiles (Safe regex)
   envContent = envContent.replace(
     /^COMPOSE_PROFILES=.*/gm, 
     'COMPOSE_PROFILES=minio,minio_test,postgres,postgres_test,redis_test,redis'
   );
 
+  // Write file
   fs.writeFileSync(ENV_DEST, envContent);
-  console.log('✅ .env created: Services pointed to localhost');
+  console.log('✅ .env Rewritten: Old keys deleted, localhost keys added.');
 
   console.log('\n⚙️  Running database setup...');
   runCommand('pnpm tsx setup.ts');
