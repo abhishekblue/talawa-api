@@ -23,35 +23,61 @@ brew install git jq
 # Install Docker Desktop if missing
 if ! command -v docker &> /dev/null; then
     echo "Docker not found. Installing Docker Desktop..."
-    brew install --cask docker
+    echo ""
+    echo "=========================================="
+    echo "Docker Desktop License Agreement"
+    echo "=========================================="
+    echo "This installer will download and install Docker Desktop."
+    echo "By pressing Enter, you agree to Docker's Subscription Service Agreement."
+    echo "License: https://www.docker.com/legal/docker-subscription-service-agreement"
+    echo ""
+    echo "Press [Enter] to accept and continue, or Ctrl+C to cancel..."
+    read -r
+
+    # Download Docker Desktop DMG
+    DOCKER_DMG_URL="https://desktop.docker.com/mac/main/amd64/Docker.dmg"
+    echo "Downloading Docker Desktop..."
+    curl -L -o /tmp/Docker.dmg "$DOCKER_DMG_URL"
+
+    # Mount the DMG
+    echo "Mounting Docker Desktop installer..."
+    sudo hdiutil attach /tmp/Docker.dmg
+
+    # Install with --accept-license flag
+    echo "Installing Docker Desktop..."
+    sudo /Volumes/Docker/Docker.app/Contents/MacOS/install --accept-license --user=$USER
+
+    # Unmount DMG
+    sudo hdiutil detach /Volumes/Docker
+
+    # Clean up
+    rm /tmp/Docker.dmg
 
     echo "Starting Docker Desktop..."
     open -a Docker
 
     echo "Waiting for Docker daemon to be ready..."
-    # Poll docker info until daemon responds (max 60 seconds)
-    DOCKER_TIMEOUT=60
+    DOCKER_TIMEOUT=120
     DOCKER_ELAPSED=0
     while ! docker info &> /dev/null; do
         if [ $DOCKER_ELAPSED -ge $DOCKER_TIMEOUT ]; then
             echo "Error: Docker daemon did not start within $DOCKER_TIMEOUT seconds."
-            echo "Please start Docker Desktop manually and re-run the installer."
             exit 1
         fi
         echo "  Waiting for Docker... ($DOCKER_ELAPSED/$DOCKER_TIMEOUT seconds)"
-        sleep 2
-        DOCKER_ELAPSED=$((DOCKER_ELAPSED + 2))
+        sleep 5
+        DOCKER_ELAPSED=$((DOCKER_ELAPSED + 5))
     done
 
     echo "✓ Docker Desktop is running!"
 else
     echo "Docker is already installed."
+
     # Verify Docker daemon is running
     if ! docker info &> /dev/null; then
         echo "Docker daemon is not running. Starting Docker Desktop..."
         open -a Docker
 
-        # Wait for daemon
         echo "Waiting for Docker daemon to be ready..."
         DOCKER_TIMEOUT=60
         DOCKER_ELAPSED=0
@@ -61,8 +87,8 @@ else
                 exit 1
             fi
             echo "  Waiting for Docker... ($DOCKER_ELAPSED/$DOCKER_TIMEOUT seconds)"
-            sleep 2
-            DOCKER_ELAPSED=$((DOCKER_ELAPSED + 2))
+            sleep 3
+            DOCKER_ELAPSED=$((DOCKER_ELAPSED + 3))
         done
         echo "✓ Docker Desktop is running!"
     else

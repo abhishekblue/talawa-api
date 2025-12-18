@@ -64,18 +64,37 @@ if (-not (Get-Command "git" -ErrorAction SilentlyContinue)) {
 # Install Docker Desktop
 if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
     Write-Host "Docker not found. Installing Docker Desktop..." -ForegroundColor Yellow
-    if ($useWinget) {
-        winget install --id Docker.DockerDesktop -e --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
-    } else {
-        choco install docker-desktop -y
-    }
+    Write-Host ""
+    Write-Host "==========================================" -ForegroundColor Cyan
+    Write-Host "Docker Desktop License Agreement" -ForegroundColor Cyan
+    Write-Host "==========================================" -ForegroundColor Cyan
+    Write-Host "This installer will download and install Docker Desktop."
+    Write-Host "By pressing Enter, you agree to Docker's Subscription Service Agreement."
+    Write-Host "License: https://www.docker.com/legal/docker-subscription-service-agreement"
+    Write-Host ""
+    Write-Host "Press [Enter] to accept and continue, or Ctrl+C to cancel..." -ForegroundColor Yellow
+    Read-Host
+
+    # Download Docker Desktop installer
+    $dockerInstaller = "$env:TEMP\DockerDesktopInstaller.exe"
+    Write-Host "Downloading Docker Desktop..."
+    Invoke-WebRequest -Uri "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe" -OutFile $dockerInstaller
+
+    # Install with --accept-license flag
+    Write-Host "Installing Docker Desktop..." -ForegroundColor Yellow
+    Start-Process -FilePath $dockerInstaller -ArgumentList "install", "--quiet", "--accept-license" -Wait
+
+    # Clean up
+    Remove-Item $dockerInstaller
+
+    # Refresh PATH
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
     Write-Host "Starting Docker Desktop..." -ForegroundColor Yellow
     Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 
     Write-Host "Waiting for Docker daemon to be ready..." -ForegroundColor Yellow
-    # Poll docker info until daemon responds (max 60 seconds)
-    $dockerTimeout = 60
+    $dockerTimeout = 120
     $dockerElapsed = 0
     while ($true) {
         try {
@@ -89,13 +108,12 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
 
         if ($dockerElapsed -ge $dockerTimeout) {
             Write-Error "Error: Docker daemon did not start within $dockerTimeout seconds."
-            Write-Error "Please start Docker Desktop manually and re-run the installer."
             exit 1
         }
 
         Write-Host "  Waiting for Docker... ($dockerElapsed/$dockerTimeout seconds)"
-        Start-Sleep -Seconds 2
-        $dockerElapsed += 2
+        Start-Sleep -Seconds 5
+        $dockerElapsed += 5
     }
 
     Write-Host "✓ Docker Desktop is running!" -ForegroundColor Green
@@ -112,7 +130,6 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
         Write-Host "Docker daemon is not running. Starting Docker Desktop..." -ForegroundColor Yellow
         Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 
-        # Wait for daemon
         Write-Host "Waiting for Docker daemon to be ready..." -ForegroundColor Yellow
         $dockerTimeout = 60
         $dockerElapsed = 0
@@ -132,8 +149,8 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
             }
 
             Write-Host "  Waiting for Docker... ($dockerElapsed/$dockerTimeout seconds)"
-            Start-Sleep -Seconds 2
-            $dockerElapsed += 2
+            Start-Sleep -Seconds 3
+            $dockerElapsed += 3
         }
         Write-Host "✓ Docker Desktop is running!" -ForegroundColor Green
     }
