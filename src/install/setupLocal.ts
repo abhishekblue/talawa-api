@@ -52,19 +52,34 @@ async function main() {
 
 console.log('🔄 Adjusting .env for local machine access...');
 
-  envContent = envContent
-    .replace(/API_MINIO_END_POINT=.*/g, 'API_MINIO_END_POINT=localhost')
-    .replace(/API_MINIO_TEST_END_POINT=.*/g, 'API_MINIO_TEST_END_POINT=localhost')
-    .replace(/API_POSTGRES_HOST=.*/g, 'API_POSTGRES_HOST=localhost')
-    .replace(/API_POSTGRES_TEST_HOST=.*/g, 'API_POSTGRES_TEST_HOST=localhost')
-    .replace(/API_REDIS_HOST=.*/g, 'API_REDIS_HOST=localhost')
-    .replace(/API_REDIS_TEST_HOST=.*/g, 'API_REDIS_TEST_HOST=localhost')
+  console.log('🔄 Adjusting .env for local machine access...');
 
-    // Profile Replacement
-    .replace(
-      /^COMPOSE_PROFILES=.*/gm, 
-      'COMPOSE_PROFILES=minio,minio_test,postgres,postgres_test,redis_test,redis'
-    );
+  // 1. Split file into lines to avoid Regex failures
+  const lines = envContent.split(/\r?\n/);
+  
+  // 2. Process every line manually
+  const updatedLines = lines.map(line => {
+      const trimmed = line.trim(); // Remove hidden whitespace
+      
+      // Force replacement if the key matches
+      if (trimmed.startsWith('API_POSTGRES_HOST=')) return 'API_POSTGRES_HOST=localhost';
+      if (trimmed.startsWith('API_POSTGRES_TEST_HOST=')) return 'API_POSTGRES_TEST_HOST=localhost';
+      if (trimmed.startsWith('API_REDIS_HOST=')) return 'API_REDIS_HOST=localhost';
+      if (trimmed.startsWith('API_REDIS_TEST_HOST=')) return 'API_REDIS_TEST_HOST=localhost';
+      if (trimmed.startsWith('API_MINIO_END_POINT=')) return 'API_MINIO_END_POINT=localhost';
+      if (trimmed.startsWith('API_MINIO_TEST_END_POINT=')) return 'API_MINIO_TEST_END_POINT=localhost';
+      
+      return line; // Keep other lines same
+  });
+  
+  // 3. Rejoin the file
+  envContent = updatedLines.join('\n');
+
+  // 4. Fix the Docker Profile (this regex is safe)
+  envContent = envContent.replace(
+    /^COMPOSE_PROFILES=.*/gm, 
+    'COMPOSE_PROFILES=minio,minio_test,postgres,postgres_test,redis_test,redis'
+  );
 
   fs.writeFileSync(ENV_DEST, envContent);
   console.log('✅ .env created: Services pointed to localhost');
