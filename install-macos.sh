@@ -53,8 +53,16 @@ if ! command -v docker &> /dev/null; then
     # Clean up
     rm /tmp/Docker.dmg
 
+    # Wait a moment for installation to complete
+    sleep 3
+
     echo "Starting Docker Desktop..."
-    open -a Docker
+    if [ -d "/Applications/Docker.app" ]; then
+        open -a /Applications/Docker.app
+    else
+        echo "Error: Docker Desktop was not installed to /Applications/Docker.app"
+        exit 1
+    fi
 
     echo "Waiting for Docker daemon to be ready..."
     DOCKER_TIMEOUT=120
