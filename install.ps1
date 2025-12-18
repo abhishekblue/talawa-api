@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Talawa-API Automated Installer for Windows (PowerShell)
 .DESCRIPTION
