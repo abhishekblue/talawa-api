@@ -229,7 +229,7 @@ pnpm install
 
 Write-Host "Running Setup Script..." -ForegroundColor Yellow
 # Use 'pnpm exec' to ensure we use the local tsx
-pnpm exec tsx src/install/setup.ts
+pnpm exec tsx src/install/setupLocal.ts
 
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "Installation Complete!" -ForegroundColor Cyan

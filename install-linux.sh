@@ -38,12 +38,12 @@ if ! command -v fnm &> /dev/null; then
     echo "Installing fnm..."
     curl -fsSL https://fnm.vercel.app/install | bash
 
-    # Activate fnm for this session
+    # Activate fnm for this session (without --use-on-cd to avoid auto-prompts)
     export PATH="$HOME/.local/share/fnm:$PATH"
-    eval "$(fnm env --use-on-cd)"
+    eval "$(fnm env)"
 else
     echo "fnm is already installed."
-    eval "$(fnm env --use-on-cd)"
+    eval "$(fnm env)"
 fi
 
 # 3. Read Versions from package.json
@@ -91,7 +91,7 @@ pnpm install
 # 6. Run Setup Script
 echo "Running Setup Script..."
 # We use 'pnpm exec' to ensure we use the local tsx package
-pnpm exec tsx src/install/setup.ts
+pnpm exec tsx src/install/setupLocal.ts
 
 echo "=========================================="
 echo "Installation Complete!"
