@@ -50,18 +50,22 @@ async function main() {
 
   let envContent = fs.readFileSync(ENV_DEV_SOURCE, 'utf-8');
 
-  console.log('🔄 Adjusting .env for local machine access...');
+console.log('🔄 Adjusting .env for local machine access...');
 
   envContent = envContent
-    .replace(/=postgres-test$/gm, '=localhost')
-    .replace(/=postgres$/gm, '=localhost')
-    .replace(/=minio-test$/gm, '=localhost')
-    .replace(/=minio$/gm, '=localhost')
-    .replace(/=redis-test$/gm, '=localhost')
-    .replace(/=redis$/gm, '=localhost')
-    .replace(/=mongo$/gm, '=localhost')
-    // Set COMPOSE_PROFILES to only start database services (exclude api)
-    .replace(/^COMPOSE_PROFILES=.*/gm, 'COMPOSE_PROFILES=minio,minio_test,postgres,postgres_test,redis_test,redis');
+    // Database Host Replacements (Exact matches from your .env file)
+    .replace('API_MINIO_END_POINT=minio', 'API_MINIO_END_POINT=localhost')
+    .replace('API_MINIO_TEST_END_POINT=minio-test', 'API_MINIO_TEST_END_POINT=localhost')
+    .replace('API_POSTGRES_HOST=postgres', 'API_POSTGRES_HOST=localhost')
+    .replace('API_POSTGRES_TEST_HOST=postgres-test', 'API_POSTGRES_TEST_HOST=localhost')
+    .replace('API_REDIS_HOST=redis', 'API_REDIS_HOST=localhost')
+    .replace('API_REDIS_TEST_HOST=redis-test', 'API_REDIS_TEST_HOST=localhost')
+
+    // Profile Replacement: Only start databases, exclude API/Caddy
+    .replace(
+      'COMPOSE_PROFILES=api,caddy,cloudbeaver,minio,minio_test,postgres,postgres_test,redis_test,redis', 
+      'COMPOSE_PROFILES=minio,minio_test,postgres,postgres_test,redis_test,redis'
+    );
 
   fs.writeFileSync(ENV_DEST, envContent);
   console.log('✅ .env created: Services pointed to localhost');
@@ -81,7 +85,7 @@ async function main() {
   }
 
   console.log('\n🐳 Starting Database Containers...');
-  runCommand('devcontainer up --workspace-folder .');
+  runCommand('devcontainer up --workspace-folder . --skip-post-create');
 
   console.log('\n⏳ Waiting for database services to be healthy...');
   // Wait for postgres to be ready (max 20 seconds)
