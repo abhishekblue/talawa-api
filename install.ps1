@@ -70,28 +70,73 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
         choco install docker-desktop -y
     }
 
-    Write-Warning "--------------------------------------------------------"
-    Write-Warning "ACTION REQUIRED: Docker Desktop has been installed."
-    Write-Warning "1. Please open 'Docker Desktop' from your Start Menu."
-    Write-Warning "2. Wait until the engine is fully running (whale icon in taskbar stops animating)."
-    Write-Warning "--------------------------------------------------------"
-    Write-Host "Press Enter once Docker is running..."
-    Read-Host
+    Write-Host "Starting Docker Desktop..." -ForegroundColor Yellow
+    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+
+    Write-Host "Waiting for Docker daemon to be ready..." -ForegroundColor Yellow
+    # Poll docker info until daemon responds (max 60 seconds)
+    $dockerTimeout = 60
+    $dockerElapsed = 0
+    while ($true) {
+        try {
+            docker info 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                break
+            }
+        } catch {
+            # Docker command failed, continue waiting
+        }
+
+        if ($dockerElapsed -ge $dockerTimeout) {
+            Write-Error "Error: Docker daemon did not start within $dockerTimeout seconds."
+            Write-Error "Please start Docker Desktop manually and re-run the installer."
+            exit 1
+        }
+
+        Write-Host "  Waiting for Docker... ($dockerElapsed/$dockerTimeout seconds)"
+        Start-Sleep -Seconds 2
+        $dockerElapsed += 2
+    }
+
+    Write-Host "✓ Docker Desktop is running!" -ForegroundColor Green
 } else {
     Write-Host "✅ Docker is installed." -ForegroundColor Green
-}
 
-# Check if Docker Daemon is actually running
-Write-Host "Checking Docker status..."
-try {
-    $dockerInfo = docker info 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "Docker daemon not responding" }
-} catch {
-    Write-Warning "Docker Desktop seems to be stopped. Please start Docker Desktop."
-    Write-Host "Press Enter once you have started it..."
-    Read-Host
-    # Check one more time
-    docker info | Out-Null
+    # Verify Docker daemon is running
+    Write-Host "Checking Docker daemon status..." -ForegroundColor Yellow
+    try {
+        docker info 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Docker daemon not responding" }
+        Write-Host "✓ Docker daemon is already running." -ForegroundColor Green
+    } catch {
+        Write-Host "Docker daemon is not running. Starting Docker Desktop..." -ForegroundColor Yellow
+        Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+
+        # Wait for daemon
+        Write-Host "Waiting for Docker daemon to be ready..." -ForegroundColor Yellow
+        $dockerTimeout = 60
+        $dockerElapsed = 0
+        while ($true) {
+            try {
+                docker info 2>&1 | Out-Null
+                if ($LASTEXITCODE -eq 0) {
+                    break
+                }
+            } catch {
+                # Docker command failed, continue waiting
+            }
+
+            if ($dockerElapsed -ge $dockerTimeout) {
+                Write-Error "Error: Docker daemon did not start within $dockerTimeout seconds."
+                exit 1
+            }
+
+            Write-Host "  Waiting for Docker... ($dockerElapsed/$dockerTimeout seconds)"
+            Start-Sleep -Seconds 2
+            $dockerElapsed += 2
+        }
+        Write-Host "✓ Docker Desktop is running!" -ForegroundColor Green
+    }
 }
 
 # ----------------------------------------------------------------

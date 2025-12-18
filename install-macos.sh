@@ -25,15 +25,49 @@ if ! command -v docker &> /dev/null; then
     echo "Docker not found. Installing Docker Desktop..."
     brew install --cask docker
 
-    echo "--------------------------------------------------------"
-    echo "ACTION REQUIRED: Docker Desktop has been installed."
-    echo "Please open 'Docker' from your Applications folder now."
-    echo "Wait until the engine is running (whale icon stops animating)."
-    echo "Press [Enter] here once Docker is running..."
-    echo "--------------------------------------------------------"
-    read -r
+    echo "Starting Docker Desktop..."
+    open -a Docker
+
+    echo "Waiting for Docker daemon to be ready..."
+    # Poll docker info until daemon responds (max 60 seconds)
+    DOCKER_TIMEOUT=60
+    DOCKER_ELAPSED=0
+    while ! docker info &> /dev/null; do
+        if [ $DOCKER_ELAPSED -ge $DOCKER_TIMEOUT ]; then
+            echo "Error: Docker daemon did not start within $DOCKER_TIMEOUT seconds."
+            echo "Please start Docker Desktop manually and re-run the installer."
+            exit 1
+        fi
+        echo "  Waiting for Docker... ($DOCKER_ELAPSED/$DOCKER_TIMEOUT seconds)"
+        sleep 2
+        DOCKER_ELAPSED=$((DOCKER_ELAPSED + 2))
+    done
+
+    echo "✓ Docker Desktop is running!"
 else
     echo "Docker is already installed."
+    # Verify Docker daemon is running
+    if ! docker info &> /dev/null; then
+        echo "Docker daemon is not running. Starting Docker Desktop..."
+        open -a Docker
+
+        # Wait for daemon
+        echo "Waiting for Docker daemon to be ready..."
+        DOCKER_TIMEOUT=60
+        DOCKER_ELAPSED=0
+        while ! docker info &> /dev/null; do
+            if [ $DOCKER_ELAPSED -ge $DOCKER_TIMEOUT ]; then
+                echo "Error: Docker daemon did not start within $DOCKER_TIMEOUT seconds."
+                exit 1
+            fi
+            echo "  Waiting for Docker... ($DOCKER_ELAPSED/$DOCKER_TIMEOUT seconds)"
+            sleep 2
+            DOCKER_ELAPSED=$((DOCKER_ELAPSED + 2))
+        done
+        echo "✓ Docker Desktop is running!"
+    else
+        echo "✓ Docker daemon is already running."
+    fi
 fi
 
 # 2. Install fnm (Fast Node Manager)
