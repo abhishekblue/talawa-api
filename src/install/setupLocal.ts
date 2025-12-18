@@ -7,7 +7,6 @@ import inquirer from 'inquirer';
 const ROOT_DIR = process.cwd();
 const ENV_DEV_SOURCE = path.join(ROOT_DIR, 'envFiles', '.env.devcontainer');
 const ENV_DEST = path.join(ROOT_DIR, '.env');
-const DOCKER_COMPOSE_FILE = path.join(ROOT_DIR, 'docker', 'compose.devcontainer.yaml');
 
 // Helper to check if we need sudo for docker
 const needsSudoForDocker = (): boolean => {
@@ -56,27 +55,29 @@ async function main() {
     .replace(/=minio$/gm, '=localhost')
     .replace(/=redis-test$/gm, '=localhost')
     .replace(/=redis$/gm, '=localhost')
-    .replace(/=mongo$/gm, '=localhost');
+    .replace(/=mongo$/gm, '=localhost')
+    // Set COMPOSE_PROFILES to only start database services (exclude api)
+    .replace(/^COMPOSE_PROFILES=.*/gm, 'COMPOSE_PROFILES=minio,minio_test,postgres,postgres_test,redis_test,redis');
 
   fs.writeFileSync(ENV_DEST, envContent);
   console.log('✅ .env created: Services pointed to localhost');
 
-  console.log('\n🐳 Starting Docker Containers...');
+  console.log('\n⚙️  Running database setup...');
+  runCommand('pnpm tsx setup.ts');
 
-  if (!fs.existsSync(DOCKER_COMPOSE_FILE)) {
-    console.error(`❌ Error: Docker file not found at ${DOCKER_COMPOSE_FILE}`);
-    process.exit(1);
+  console.log('\n📦 Installing DevContainer CLI...');
+  runCommand('pnpm install -g @devcontainers/cli');
+
+  // Add user to docker group if needed (Linux only)
+  if (process.platform === 'linux' && needsSudoForDocker()) {
+    console.log('\n🔧 Adding user to docker group...');
+    const username = process.env.USER || process.env.USERNAME || 'ubuntu';
+    runCommand(`sudo usermod -a -G docker ${username}`);
+    console.log('ℹ️  You may need to log out and back in for docker group changes to take effect');
   }
 
-  const services = 'postgres minio redis postgres-test minio-test redis-test';
-
-  console.log('> Using file: docker/compose.devcontainer.yaml');
-  console.log(`> Starting services: ${services}`);
-
-  runCommand(`docker compose -f ${DOCKER_COMPOSE_FILE} up -d ${services}`);
-
-  console.log('⏳ Waiting 10s for containers to initialize...');
-  runCommand('sleep 10');
+  console.log('\n🐳 Starting Database Containers...');
+  runCommand('devcontainer up --workspace-folder .');
 
   // Sample Data
   const dataAnswer = await inquirer.prompt([
