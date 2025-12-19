@@ -18,13 +18,14 @@ const needsSudoForDocker = (): boolean => {
   }
 };
 
-// Helper for shell commands
+// Helper for shell commands (WSL-specific with sudo -E to preserve PATH)
 const runCommand = (command: string, throwOnError = true) => {
   try {
-    // Auto-prefix docker commands with sudo if needed
+    // Auto-prefix docker/devcontainer commands with sudo if needed
     let finalCommand = command;
-    if (command.includes('docker') && needsSudoForDocker()) {
-      finalCommand = `sudo ${command}`;
+    if ((command.includes('docker') || command.includes('devcontainer') || command.includes('pnpm')) && needsSudoForDocker()) {
+      // Use sudo -E to preserve environment (especially PATH for pnpm/devcontainer)
+      finalCommand = `sudo -E ${command}`;
       console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
     }
     execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
@@ -39,7 +40,7 @@ const runCommand = (command: string, throwOnError = true) => {
 };
 
 async function main() {
-  console.log('\n🚀 Talawa API Local Setup\n');
+  console.log('\n🚀 Talawa API Local Setup (Windows WSL)\n');
 
   console.log('📄 Configuring Environment Variables...');
 

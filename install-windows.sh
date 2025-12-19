@@ -186,7 +186,7 @@ pnpm install
 # 6. Run Setup Script
 echo "Running Setup Script..."
 # We use 'pnpm exec' to ensure we use the local tsx package
-pnpm exec tsx src/install/setupLocal.ts
+pnpm exec tsx src/install/setupLocalWindows.ts
 
 echo "=========================================="
 echo "Installation Complete!"
