@@ -17,7 +17,8 @@ if [ -f /etc/debian_version ]; then
     sudo apt-get install -y git curl jq unzip
 
     # Install Docker if missing
-    if ! command -v docker &> /dev/null; then
+    # Check if Docker daemon is actually accessible (not just if command exists)
+    if ! docker info &> /dev/null; then
         echo "Docker not found."
         echo ""
         echo "=========================================="

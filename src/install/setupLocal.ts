@@ -107,6 +107,15 @@ async function main() {
     const username = process.env.USER || process.env.USERNAME || 'ubuntu';
     runCommand(`sudo usermod -a -G docker ${username}`);
     console.log('ℹ️  You may need to log out and back in for docker group changes to take effect');
+
+    // Start Docker service if not running
+    console.log('\n🐳 Starting Docker service...');
+    try {
+      runCommand('sudo service docker start', false);
+      console.log('✅ Docker service started');
+    } catch {
+      console.log('ℹ️  Docker service already running or using Docker Desktop');
+    }
   }
 
   console.log('\n🐳 Starting Database Containers...');
