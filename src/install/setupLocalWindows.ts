@@ -102,7 +102,9 @@ async function main() {
   console.log('\n📦 Installing DevContainer CLI...');
   // Install with sudo so it's accessible system-wide for docker operations
   if (needsSudoForDocker()) {
-    runCommand('sudo npm install -g @devcontainers/cli');
+    // Use full path to npm since sudo doesn't have user's PATH
+    const npmPath = execSync('which npm', { encoding: 'utf-8' }).trim();
+    runCommand(`sudo ${npmPath} install -g @devcontainers/cli`);
   } else {
     runCommand('pnpm install -g @devcontainers/cli');
   }
