@@ -100,7 +100,12 @@ async function main() {
   console.log('✅ .env updated: Database services point to localhost');
 
   console.log('\n📦 Installing DevContainer CLI...');
-  runCommand('pnpm install -g @devcontainers/cli');
+  // Install with sudo so it's accessible system-wide for docker operations
+  if (needsSudoForDocker()) {
+    runCommand('sudo npm install -g @devcontainers/cli');
+  } else {
+    runCommand('pnpm install -g @devcontainers/cli');
+  }
 
   // Add user to docker group if needed (Linux only)
   if (process.platform === 'linux' && needsSudoForDocker()) {
@@ -118,7 +123,11 @@ async function main() {
   let retries = 10;
   while (retries > 0) {
     try {
-      execSync('docker exec talawa-postgres-1 pg_isready -U postgres', { stdio: 'ignore' });
+      // Use appropriate docker command based on sudo requirement
+      const dockerCmd = needsSudoForDocker()
+        ? 'sudo docker exec talawa-postgres-1 pg_isready -U postgres'
+        : 'docker exec talawa-postgres-1 pg_isready -U postgres';
+      execSync(dockerCmd, { stdio: 'ignore' });
       console.log('✅ Database services are ready');
       break;
     } catch {
