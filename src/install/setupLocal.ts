@@ -107,18 +107,6 @@ async function main() {
     const username = process.env.USER || process.env.USERNAME || 'ubuntu';
     runCommand(`sudo usermod -a -G docker ${username}`);
     console.log('ℹ️  You may need to log out and back in for docker group changes to take effect');
-
-    // Start Docker daemon using dockerd directly (works in WSL2)
-    console.log('\n🐳 Starting Docker daemon...');
-    try {
-      // Start dockerd in background
-      execSync('sudo dockerd > /dev/null 2>&1 &', { stdio: 'ignore' });
-      // Wait for daemon to start
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      console.log('✅ Docker daemon started');
-    } catch {
-      console.log('ℹ️  Docker daemon already running or using Docker Desktop');
-    }
   }
 
   console.log('\n🐳 Starting Database Containers...');

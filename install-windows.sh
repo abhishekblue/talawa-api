@@ -54,6 +54,27 @@ if [ -f /etc/debian_version ]; then
             sudo usermod -aG docker $USER
             echo "NOTE: Docker group added. The script will use 'sudo' for Docker commands."
             echo "      To use Docker without 'sudo' in future sessions, log out and back in."
+
+            echo "Starting Docker daemon..."
+            # Start dockerd and wait for it to be ready
+            sudo dockerd > /tmp/dockerd.log 2>&1 &
+            DOCKERD_PID=$!
+
+            # Wait up to 10 seconds for docker to start
+            for i in {1..10}; do
+                if sudo docker info > /dev/null 2>&1; then
+                    echo "✅ Docker daemon started successfully"
+                    break
+                fi
+                sleep 1
+            done
+
+            # Final check
+            if ! sudo docker info > /dev/null 2>&1; then
+                echo "⚠️  Docker daemon failed to start. Check /tmp/dockerd.log for details"
+                tail -20 /tmp/dockerd.log
+                exit 1
+            fi
         else
             echo ""
             echo "⚠️  Please install Docker Desktop for Windows manually:"
