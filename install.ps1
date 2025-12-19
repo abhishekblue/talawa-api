@@ -102,12 +102,14 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
     # Refresh PATH
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-    Write-Host "Starting Docker Desktop in background..." -ForegroundColor Yellow
-    # Start Docker Desktop without opening the window
-    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe" -WindowStyle Hidden
+    Write-Host "Starting Docker Desktop..." -ForegroundColor Yellow
+    Write-Host "NOTE: Docker Desktop will open briefly for first-time setup. This is normal." -ForegroundColor Yellow
+    # Start Docker Desktop normally on first install (needs GUI for WSL2 setup)
+    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
 
-    Write-Host "Waiting for Docker daemon to be ready..." -ForegroundColor Yellow
-    $dockerTimeout = 120
+    Write-Host "`nWaiting for Docker daemon to be ready..." -ForegroundColor Yellow
+    Write-Host "(This can take 1-3 minutes on first launch)" -ForegroundColor Gray
+    $dockerTimeout = 180
     $dockerElapsed = 0
     while ($true) {
         try {
@@ -120,11 +122,13 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
         }
 
         if ($dockerElapsed -ge $dockerTimeout) {
-            Write-Error "Error: Docker daemon did not start within $dockerTimeout seconds."
+            Write-Host "`n⚠️  Docker daemon did not start within $dockerTimeout seconds." -ForegroundColor Red
+            Write-Host "Please check if Docker Desktop is running manually and re-run this script." -ForegroundColor Yellow
             exit 1
         }
 
-        Write-Host "  Waiting for Docker... ($dockerElapsed/$dockerTimeout seconds)"
+        Write-Host "  Waiting... ($dockerElapsed/$dockerTimeout seconds)" -NoNewline
+        Write-Host "`r" -NoNewline
         Start-Sleep -Seconds 5
         $dockerElapsed += 5
     }
@@ -141,10 +145,11 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
         Write-Host "✓ Docker daemon is already running." -ForegroundColor Green
     } catch {
         Write-Host "Docker daemon is not running. Starting Docker Desktop..." -ForegroundColor Yellow
-        Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe" -WindowStyle Hidden
+        # Start Docker Desktop service (backend) without GUI
+        & "C:\Program Files\Docker\Docker\Docker Desktop.exe" --startup
 
         Write-Host "Waiting for Docker daemon to be ready..." -ForegroundColor Yellow
-        $dockerTimeout = 60
+        $dockerTimeout = 90
         $dockerElapsed = 0
         while ($true) {
             try {
@@ -157,15 +162,17 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
             }
 
             if ($dockerElapsed -ge $dockerTimeout) {
-                Write-Error "Error: Docker daemon did not start within $dockerTimeout seconds."
+                Write-Host "`n⚠️  Docker daemon did not start within $dockerTimeout seconds." -ForegroundColor Red
+                Write-Host "Please start Docker Desktop manually and re-run this script." -ForegroundColor Yellow
                 exit 1
             }
 
-            Write-Host "  Waiting for Docker... ($dockerElapsed/$dockerTimeout seconds)"
+            Write-Host "  Waiting... ($dockerElapsed/$dockerTimeout seconds)" -NoNewline
+            Write-Host "`r" -NoNewline
             Start-Sleep -Seconds 3
             $dockerElapsed += 3
         }
-        Write-Host "✓ Docker Desktop is running!" -ForegroundColor Green
+        Write-Host "`n✓ Docker Desktop is running!" -ForegroundColor Green
     }
 }
 
