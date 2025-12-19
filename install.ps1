@@ -92,9 +92,9 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
     Write-Host "Downloading Docker Desktop..."
     Invoke-WebRequest -Uri "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe" -OutFile $dockerInstaller
 
-    # Install with --accept-license flag
+    # Install with --accept-license flag (silent installation)
     Write-Host "Installing Docker Desktop..." -ForegroundColor Yellow
-    Start-Process -FilePath $dockerInstaller -ArgumentList "install", "--quiet", "--accept-license" -Wait
+    Start-Process -FilePath $dockerInstaller -ArgumentList "install", "--quiet", "--accept-license" -Wait -NoNewWindow
 
     # Clean up
     Remove-Item $dockerInstaller
@@ -102,8 +102,9 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
     # Refresh PATH
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
-    Write-Host "Starting Docker Desktop..." -ForegroundColor Yellow
-    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    Write-Host "Starting Docker Desktop in background..." -ForegroundColor Yellow
+    # Start Docker Desktop without opening the window
+    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe" -WindowStyle Hidden
 
     Write-Host "Waiting for Docker daemon to be ready..." -ForegroundColor Yellow
     $dockerTimeout = 120
@@ -140,7 +141,7 @@ if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
         Write-Host "✓ Docker daemon is already running." -ForegroundColor Green
     } catch {
         Write-Host "Docker daemon is not running. Starting Docker Desktop..." -ForegroundColor Yellow
-        Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+        Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe" -WindowStyle Hidden
 
         Write-Host "Waiting for Docker daemon to be ready..." -ForegroundColor Yellow
         $dockerTimeout = 60
