@@ -19,72 +19,78 @@ if [ -f /etc/debian_version ]; then
     # Install Docker if missing
     # Check if Docker daemon is actually accessible (not just if command exists)
     if ! docker info &> /dev/null; then
-        echo "Docker not found."
-        echo ""
-        echo "=========================================="
-        echo "Docker Installation Options for WSL"
-        echo "=========================================="
-        echo ""
-        echo "RECOMMENDED: Install Docker Desktop for Windows with WSL2 integration"
-        echo "  - Download from: https://www.docker.com/products/docker-desktop"
-        echo "  - Enable WSL2 integration in Docker Desktop settings"
-        echo "  - This is the officially supported method for WSL"
-        echo ""
-        echo "ALTERNATIVE: Install Docker Engine inside WSL (community method)"
-        echo "  - Uses get.docker.com script"
-        echo "  - May have limitations with some features"
-        echo ""
-        read -p "Do you want to install Docker Engine inside WSL? (y/N): " install_docker
-
-        if [[ "$install_docker" =~ ^[Yy]$ ]]; then
-            echo ""
-            echo "=========================================="
-            echo "Docker Engine License"
-            echo "=========================================="
-            echo "Installing Docker Engine (open source)."
-            echo "License: Apache 2.0 - https://github.com/moby/moby/blob/master/LICENSE"
-            echo ""
-            echo "Press [Enter] to continue, or Ctrl+C to cancel..."
-            read -r
-
-            echo "Installing Docker Engine..."
-            curl -fsSL https://get.docker.com | sh
-
-            echo "Adding current user to docker group..."
-            sudo usermod -aG docker $USER
-            echo "NOTE: Docker group added. The script will use 'sudo' for Docker commands."
-            echo "      To use Docker without 'sudo' in future sessions, log out and back in."
-
+        # Check if docker binary exists (might just be daemon not running)
+        if command -v docker &> /dev/null; then
+            echo "Docker is installed but daemon is not running."
             echo "Starting Docker daemon..."
-            # Start dockerd and wait for it to be ready
-            sudo dockerd > /tmp/dockerd.log 2>&1 &
-            DOCKERD_PID=$!
+        else
+            echo "Docker not found."
+            echo ""
+            echo "=========================================="
+            echo "Docker Installation Options for WSL"
+            echo "=========================================="
+            echo ""
+            echo "RECOMMENDED: Install Docker Desktop for Windows with WSL2 integration"
+            echo "  - Download from: https://www.docker.com/products/docker-desktop"
+            echo "  - Enable WSL2 integration in Docker Desktop settings"
+            echo "  - This is the officially supported method for WSL"
+            echo ""
+            echo "ALTERNATIVE: Install Docker Engine inside WSL (community method)"
+            echo "  - Uses get.docker.com script"
+            echo "  - May have limitations with some features"
+            echo ""
+            read -p "Do you want to install Docker Engine inside WSL? (y/N): " install_docker
 
-            # Wait up to 10 seconds for docker to start
-            for i in {1..10}; do
-                if sudo docker info > /dev/null 2>&1; then
-                    echo "✅ Docker daemon started successfully"
-                    break
-                fi
-                sleep 1
-            done
+            if [[ "$install_docker" =~ ^[Yy]$ ]]; then
+                echo ""
+                echo "=========================================="
+                echo "Docker Engine License"
+                echo "=========================================="
+                echo "Installing Docker Engine (open source)."
+                echo "License: Apache 2.0 - https://github.com/moby/moby/blob/master/LICENSE"
+                echo ""
+                echo "Press [Enter] to continue, or Ctrl+C to cancel..."
+                read -r
 
-            # Final check
-            if ! sudo docker info > /dev/null 2>&1; then
-                echo "⚠️  Docker daemon failed to start. Check /tmp/dockerd.log for details"
-                tail -20 /tmp/dockerd.log
+                echo "Installing Docker Engine..."
+                curl -fsSL https://get.docker.com | sh
+
+                echo "Adding current user to docker group..."
+                sudo usermod -aG docker $USER
+                echo "NOTE: Docker group added. The script will use 'sudo' for Docker commands."
+                echo "      To use Docker without 'sudo' in future sessions, log out and back in."
+            else
+                echo ""
+                echo "⚠️  Please install Docker Desktop for Windows manually:"
+                echo "   1. Download from https://www.docker.com/products/docker-desktop"
+                echo "   2. Install and enable WSL2 integration"
+                echo "   3. Re-run this script"
                 exit 1
             fi
-        else
-            echo ""
-            echo "⚠️  Please install Docker Desktop for Windows manually:"
-            echo "   1. Download from https://www.docker.com/products/docker-desktop"
-            echo "   2. Install and enable WSL2 integration"
-            echo "   3. Re-run this script"
+        fi
+
+        # Start Docker daemon (whether just installed or already exists)
+        echo "Starting Docker daemon..."
+        sudo dockerd > /tmp/dockerd.log 2>&1 &
+        DOCKERD_PID=$!
+
+        # Wait up to 10 seconds for docker to start
+        for i in {1..10}; do
+            if sudo docker info > /dev/null 2>&1; then
+                echo "✅ Docker daemon started successfully"
+                break
+            fi
+            sleep 1
+        done
+
+        # Final check
+        if ! sudo docker info > /dev/null 2>&1; then
+            echo "⚠️  Docker daemon failed to start. Check /tmp/dockerd.log for details"
+            tail -20 /tmp/dockerd.log
             exit 1
         fi
     else
-        echo "✅ Docker is already installed."
+        echo "✅ Docker is already installed and running."
     fi
 else
     echo "Error: This script currently only supports Ubuntu/Debian-based WSL distributions."
