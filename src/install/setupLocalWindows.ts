@@ -50,8 +50,8 @@ async function main() {
   }
 
   console.log('\n⚙️  Running database setup (generating JWT secret, configuring services)...');
-  // Let setup.ts run normally and ask all questions
-  runCommand('pnpm tsx setup.ts');
+  // Let setup.ts run normally and ask all questions (pnpm doesn't need sudo)
+  execSync('pnpm tsx setup.ts', { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
 
   console.log('\n🔄 Adjusting .env for local machine access...');
   // NOW read the .env file that setup.ts just created
@@ -100,11 +100,11 @@ async function main() {
   console.log('✅ .env updated: Database services point to localhost');
 
   console.log('\n📦 Installing DevContainer CLI...');
-  // Install with sudo so it's accessible system-wide for docker operations
+  // Install with sudo -E to preserve PATH so npm and node can be found
   if (needsSudoForDocker()) {
-    // Use full path to npm since sudo doesn't have user's PATH
-    const npmPath = execSync('which npm', { encoding: 'utf-8' }).trim();
-    runCommand(`sudo ${npmPath} install -g @devcontainers/cli`);
+    // Use sudo -E to preserve environment variables (PATH)
+    const command = 'sudo -E npm install -g @devcontainers/cli';
+    execSync(command, { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
   } else {
     runCommand('pnpm install -g @devcontainers/cli');
   }
@@ -113,7 +113,7 @@ async function main() {
   if (process.platform === 'linux' && needsSudoForDocker()) {
     console.log('\n🔧 Adding user to docker group...');
     const username = process.env.USER || process.env.USERNAME || 'ubuntu';
-    runCommand(`sudo usermod -a -G docker ${username}`);
+    execSync(`sudo usermod -a -G docker ${username}`, { stdio: 'inherit' });
     console.log('ℹ️  You may need to log out and back in for docker group changes to take effect');
   }
 
@@ -144,7 +144,7 @@ async function main() {
   }
 
   console.log('\n📊 Applying database migrations...');
-  runCommand('pnpm run apply_drizzle_migrations');
+  execSync('pnpm run apply_drizzle_migrations', { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
 
   // Sample Data
   const dataAnswer = await inquirer.prompt([
@@ -159,7 +159,7 @@ async function main() {
   if (dataAnswer.addSampleData) {
     console.log('\n🌱 Seeding Sample Data...');
     try {
-      runCommand('pnpm run add:sample_data', false);
+      execSync('pnpm run add:sample_data', { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
       console.log('✅ Sample data seeded successfully');
     } catch (error) {
       console.log('⚠️  Sample data seeding failed, but you can run it manually later:');
@@ -180,7 +180,7 @@ async function main() {
     // We use stdio: 'inherit' so the user interacts with the server directly
     try {
         // This works because the script context ALREADY has the correct PATH
-        execSync('pnpm run start_development_server', { stdio: 'inherit' });
+        execSync('pnpm run start_development_server', { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
     } catch (e) {
         // This catch block handles when the user presses Ctrl+C to stop the server
         console.log('\nServer stopped.');
