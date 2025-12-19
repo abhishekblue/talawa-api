@@ -23,7 +23,7 @@ const runCommand = (command: string, throwOnError = true) => {
   try {
     // Auto-prefix docker/devcontainer commands with sudo if needed
     let finalCommand = command;
-    if ((command.includes('docker') || command.includes('devcontainer') || command.includes('pnpm')) && needsSudoForDocker()) {
+    if ((command.includes('docker') || command.includes('devcontainer')) && needsSudoForDocker()) {
       // Use sudo -E to preserve environment (especially PATH for pnpm/devcontainer)
       finalCommand = `sudo -E ${command}`;
       console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
