@@ -100,14 +100,8 @@ async function main() {
   console.log('✅ .env updated: Database services point to localhost');
 
   console.log('\n📦 Installing DevContainer CLI...');
-  // Install with sudo -E to preserve PATH so npm and node can be found
-  if (needsSudoForDocker()) {
-    // Use sudo -E to preserve environment variables (PATH)
-    const command = 'sudo -E npm install -g @devcontainers/cli';
-    execSync(command, { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
-  } else {
-    runCommand('pnpm install -g @devcontainers/cli');
-  }
+  // Install in user space (no sudo needed for installation)
+  execSync('pnpm install -g @devcontainers/cli', { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
 
   // Add user to docker group if needed (Linux only)
   if (process.platform === 'linux' && needsSudoForDocker()) {
