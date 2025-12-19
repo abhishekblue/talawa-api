@@ -74,19 +74,26 @@ if [ -f /etc/debian_version ]; then
         sudo dockerd > /tmp/dockerd.log 2>&1 &
         DOCKERD_PID=$!
 
-        # Wait up to 10 seconds for docker to start
-        for i in {1..10}; do
-            if sudo docker info > /dev/null 2>&1; then
+        # Wait up to 15 seconds for docker to start
+        echo "Waiting for Docker daemon to initialize..."
+        for i in {1..15}; do
+            if sudo docker ps > /dev/null 2>&1; then
                 echo "✅ Docker daemon started successfully"
                 break
             fi
+            echo -n "."
             sleep 1
         done
+        echo ""
 
-        # Final check
-        if ! sudo docker info > /dev/null 2>&1; then
-            echo "⚠️  Docker daemon failed to start. Check /tmp/dockerd.log for details"
-            tail -20 /tmp/dockerd.log
+        # Final check - test both info and ps
+        if ! sudo docker ps > /dev/null 2>&1; then
+            echo "⚠️  Docker daemon failed to start properly."
+            echo "Error log from /tmp/dockerd.log:"
+            tail -30 /tmp/dockerd.log
+            echo ""
+            echo "Trying to diagnose issue..."
+            sudo docker info 2>&1 | head -20 || true
             exit 1
         fi
     else

@@ -21,9 +21,9 @@ const needsSudoForDocker = (): boolean => {
 // Helper for shell commands
 const runCommand = (command: string, throwOnError = true) => {
   try {
-    // Auto-prefix docker commands with sudo if needed
+    // Auto-prefix docker/devcontainer commands with sudo if needed
     let finalCommand = command;
-    if (command.includes('docker') && needsSudoForDocker()) {
+    if ((command.includes('docker') || command.includes('devcontainer')) && needsSudoForDocker()) {
       finalCommand = `sudo ${command}`;
       console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
     }
