@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import inquirer from 'inquirer';
 
 const ROOT_DIR = process.cwd();
 const ENV_DEV_SOURCE = path.join(ROOT_DIR, 'envFiles', '.env.devcontainer');
@@ -37,7 +38,7 @@ async function main() {
   if (process.platform === 'linux') {
     console.log('\n🔧 Adding user to docker group...');
     console.log('DEBUG: process.platform =', process.platform);
-    execSync('sudo usermod -a -G docker $USER}');
+    execSync('sudo usermod -a -G docker $USER');
     console.log('==========sud command check 1===========')
     execSync ('sudo su $USER -')
     console.log('==========sud command check ===========')
@@ -50,6 +51,29 @@ async function main() {
   console.log('\n🚀 Starting DevContainer...');
   execSync('devcontainer up --workspace-folder .');
 
+  console.log('\n📊 Applying database migrations...');
+  execSync('pnpm run apply_drizzle_migrations');
+
+  const dataAnswer = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'addSampleData',
+      message: 'Do you want to seed the database with sample data?',
+      default: true,
+    },
+  ]);
+
+  if (dataAnswer.addSampleData) {
+    console.log('\n🌱 Seeding Sample Data...');
+    try {
+      execSync(`docker exec talawa-api-1 /bin/bash -c 'pnpm run add:sample_data'`, { stdio: 'inherit' });
+      console.log('✅ Sample data seeded successfully');
+    } catch (error) {
+      console.log('⚠️  Sample data seeding failed, but you can run it manually later:');
+      console.log(`    docker exec talawa-api-1 /bin/bash -c 'pnpm run add:sample_data'`);
+    }
+  }
+
   console.log('\n🚀 Starting API Server...');
   execSync('docker exec talawa-api-1 /bin/bash -c "nohup pnpm run start_development_server > /dev/null 2>&1 &"');
 
@@ -58,13 +82,9 @@ async function main() {
 
   console.log('\n✅ DevContainer Setup Complete!');
   console.log('------------------------------------------------');
-  console.log('✓ API Server is running at: http://localhost:4000');
+  console.log('✓ API Server is running in detached mode at: http://localhost:4000');
   console.log('✓ GraphQL Playground: http://localhost:4000/graphql');
-  console.log('');
-  console.log('Useful Commands:');
-  console.log('  View logs:    docker logs -f talawa-api-1');
-  console.log('  Stop server:  docker exec talawa-api-1 pkill -f "pnpm run start_development_server"');
-  console.log('  Restart:      docker restart talawa-api-1');
+  console.log('  Stop server:  docker compose down');
   console.log('------------------------------------------------');
 }
 

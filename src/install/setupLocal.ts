@@ -16,24 +16,6 @@ const needsSudoForDocker = (): boolean => {
   }
 };
 
-const runCommand = (command: string, throwOnError = true) => {
-  try {
-    let finalCommand = command;
-    if (command.includes('docker') && needsSudoForDocker()) {
-      finalCommand = `sudo ${command}`;
-      console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
-    }
-    execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
-  } catch (error) {
-    console.error(`❌ Command failed: ${command}`);
-    if (throwOnError) {
-      process.exit(1);
-    } else {
-      throw error;
-    }
-  }
-};
-
 async function main() {
   console.log('\n🚀 Talawa API Local Setup\n');
 
@@ -45,7 +27,7 @@ async function main() {
   }
 
   console.log('\n⚙️  Running database setup (generating JWT secret, configuring services)...');
-  runCommand('pnpm tsx setup.ts');
+  execSync('pnpm tsx setup.ts');
 
   console.log('\n🔄 Adjusting .env for local machine access...');
   let envContent = fs.readFileSync(ENV_DEST, 'utf-8');
@@ -83,18 +65,18 @@ async function main() {
   console.log('✅ .env updated: Database services point to localhost');
 
   console.log('\n📦 Installing DevContainer CLI...');
-  runCommand('pnpm install -g @devcontainers/cli');
+  execSync('pnpm install -g @devcontainers/cli');
 
   // Add user to docker group if needed (Linux only)
   if (process.platform === 'linux' && needsSudoForDocker()) {
     console.log('\n🔧 Adding user to docker group...');
-    const username = process.env.USER || process.env.USERNAME || 'ubuntu';
-    runCommand(`sudo usermod -a -G docker ${username}`);
+    execSync('sudo usermod -a -G docker $USER');
+    execSync('sudo su $USER -')
     console.log('ℹ️  You may need to log out and back in for docker group changes to take effect');
   }
 
   console.log('\n🐳 Starting Database Containers...');
-  runCommand('devcontainer up --workspace-folder . --skip-post-create');
+  execSync('devcontainer up --workspace-folder . --skip-post-create');
 
   console.log('\n⏳ Waiting for database services to be healthy...');
   let retries = 10;
@@ -114,7 +96,7 @@ async function main() {
   }
 
   console.log('\n📊 Applying database migrations...');
-  runCommand('pnpm run apply_drizzle_migrations');
+  execSync('pnpm run apply_drizzle_migrations');
 
   const dataAnswer = await inquirer.prompt([
     {
@@ -128,7 +110,7 @@ async function main() {
   if (dataAnswer.addSampleData) {
     console.log('\n🌱 Seeding Sample Data...');
     try {
-      runCommand('pnpm run add:sample_data', false);
+      execSync('pnpm run add:sample_data', { stdio: 'inherit' });
       console.log('✅ Sample data seeded successfully');
     } catch (error) {
       console.log('⚠️  Sample data seeding failed, but you can run it manually later:');
@@ -136,24 +118,11 @@ async function main() {
     }
   }
 
-  const startAnswer = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'startServer',
-      message: 'Do you want to start the development server now?',
-      default: true,
-    },
-  ]);
-
-  if (startAnswer.startServer) {
-    console.log('\n🚀 Starting Development Server...');
-    try {
-      execSync('pnpm run start_development_server', { stdio: 'inherit' });
-    } catch (e) {
-      console.log('\nServer stopped.');
-    }
-  } else {
-    console.log('⚠️  Restart your terminal to use pnpm manually.');
+  console.log('\n🚀 Starting Development Server...');
+  try {
+    execSync('pnpm run start_development_server', { stdio: 'inherit' });
+  } catch (e) {
+    console.log('\nServer stopped.');
   }
 }
 
