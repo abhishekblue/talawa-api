@@ -2,26 +2,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-// Path Definitions
 const ROOT_DIR = process.cwd();
 const ENV_DEV_SOURCE = path.join(ROOT_DIR, 'envFiles', '.env.devcontainer');
 const ENV_CI_SOURCE = path.join(ROOT_DIR, 'envFiles', '.env.ci');
 const ENV_DEST = path.join(ROOT_DIR, '.env');
 
-// Helper to check if we need sudo for docker
 const needsSudoForDocker = (): boolean => {
   try {
     execSync('docker ps', { stdio: 'ignore' });
-    return false; // Docker works without sudo
+    return false;
   } catch {
-    return true; // Need sudo for docker
+    return true;
   }
 };
 
-// Helper for shell commands
 const runCommand = (command: string) => {
   try {
-    // Auto-prefix docker commands with sudo if needed
     let finalCommand = command;
     if (command.includes('docker') && needsSudoForDocker()) {
       finalCommand = `sudo ${command}`;
@@ -37,7 +33,6 @@ const runCommand = (command: string) => {
 async function main() {
   console.log('\n🚀 Talawa API DevContainer Setup\n');
 
-  // Check if running in CI environment
   const isCI = process.env.CI;
 
   if (isCI) {
@@ -61,6 +56,13 @@ async function main() {
   console.log('\n📦 Installing DevContainer CLI...');
   runCommand('pnpm install -g @devcontainers/cli');
 
+  if (process.platform === 'linux' && needsSudoForDocker()) {
+    console.log('\n🔧 Adding user to docker group...');
+    const username = process.env.USER || process.env.USERNAME || 'ubuntu';
+    runCommand(`sudo usermod -a -G docker ${username}`);
+    console.log('ℹ️  You may need to log out and back in for docker group changes to take effect');
+  }
+
   console.log('\n🐳 Building DevContainer...');
   runCommand('devcontainer build --workspace-folder .');
 
@@ -71,7 +73,6 @@ async function main() {
   runCommand('docker exec talawa-api-1 /bin/bash -c "nohup pnpm run start_development_server > /dev/null 2>&1 &"');
 
   console.log('\n⏳ Waiting for server to start...');
-  // Cross-platform sleep - works on Windows, macOS, and Linux
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   console.log('\n✅ DevContainer Setup Complete!');

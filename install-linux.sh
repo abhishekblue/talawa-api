@@ -74,6 +74,10 @@ echo "Target Node Version: $CLEAN_NODE_VERSION"
 echo "Target pnpm Version: $PNPM_VERSION"
 
 # 4. Install Node and pnpm
+echo "Installing Node.js..."
+fnm install $CLEAN_NODE_VERSION
+fnm use $CLEAN_NODE_VERSION
+
 echo "Installing pnpm..."
 npm install -g "pnpm@$PNPM_VERSION"
 
