@@ -7,28 +7,6 @@ const ENV_DEV_SOURCE = path.join(ROOT_DIR, 'envFiles', '.env.devcontainer');
 const ENV_CI_SOURCE = path.join(ROOT_DIR, 'envFiles', '.env.ci');
 const ENV_DEST = path.join(ROOT_DIR, '.env');
 
-// const needsSudoForDocker = (): boolean => {
-//   try {
-//     execSync('docker ps', { stdio: 'ignore' });
-//     return false;
-//   } catch {
-//     return true;
-//   }
-// };
-
-// const runCommand = (command: string) => {
-//   try {
-//     let finalCommand = command;
-//     if (command.includes('docker') && needsSudoForDocker()) {
-//       finalCommand = `sudo ${command}`;
-//       console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
-//     }
-//     execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR });
-//   } catch (error) {
-//     console.error(`❌ Command failed: ${command}`);
-//     process.exit(1);
-//   }
-// };
 
 async function main() {
   console.log('\n🚀 Talawa API DevContainer Setup\n');
@@ -56,20 +34,16 @@ async function main() {
   console.log('\n📦 Installing DevContainer CLI...');
   execSync('pnpm install -g @devcontainers/cli');
 
-  // if (process.platform === 'linux') {
-  //   console.log('\n🔧 Adding user to docker group...');
+  if (process.platform === 'linux') {
+    console.log('\n🔧 Adding user to docker group...');
+    console.log('DEBUG: process.platform =', process.platform);
+    execSync('sudo usermod -a -G docker $USER}');
+    console.log('==========sud command check 1===========')
+    execSync ('sudo su $USER -')
+    console.log('==========sud command check ===========')
 
-  //   console.log('==========sudo command check 1===========')
-  //   execSync('sudo usermod -a -G docker $USER');
-  //   execSync ('sudo su $USER -')
-  //   console.log('==========sudo command check pass===========')
-    
-  // }
+  }
 
-
-  execSync('sudo usermod -a -G docker $USER');
-  execSync ('sudo su $USER -')
-  
   console.log('\n🐳 Building DevContainer...');
   execSync('devcontainer build --workspace-folder .');
 

@@ -113,9 +113,26 @@ echo "Installing project dependencies..."
 pnpm install
 
 # 6. Run Setup Script
-echo "Running Setup Script..."
-# We use 'pnpm exec' to ensure we use the local tsx package
-pnpm exec tsx src/install/setupLocal.ts
+echo ""
+echo "Select setup mode:"
+echo "1) Local/Hybrid (databases in Docker, API on host)"
+echo "2) Docker/DevContainer (everything in Docker)"
+read -p "Enter choice [1-2]: " SETUP_CHOICE
+
+case $SETUP_CHOICE in
+    1)
+        echo "Running Local/Hybrid setup..."
+        pnpm exec tsx src/install/setupLocal.ts
+        ;;
+    2)
+        echo "Running Docker/DevContainer setup..."
+        pnpm exec tsx src/install/setupDocker.ts
+        ;;
+    *)
+        echo "Invalid choice. Defaulting to Local/Hybrid setup..."
+        pnpm exec tsx src/install/setupLocal.ts
+        ;;
+esac
 
 echo "=========================================="
 echo "Installation Complete!"
