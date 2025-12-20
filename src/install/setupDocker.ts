@@ -16,19 +16,19 @@ const needsSudoForDocker = (): boolean => {
   }
 };
 
-const runCommand = (command: string) => {
-  try {
-    let finalCommand = command;
-    if (command.includes('docker') && needsSudoForDocker()) {
-      finalCommand = `sudo ${command}`;
-      console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
-    }
-    execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR });
-  } catch (error) {
-    console.error(`❌ Command failed: ${command}`);
-    process.exit(1);
-  }
-};
+// const runCommand = (command: string) => {
+//   try {
+//     let finalCommand = command;
+//     if (command.includes('docker') && needsSudoForDocker()) {
+//       finalCommand = `sudo ${command}`;
+//       console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
+//     }
+//     execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR });
+//   } catch (error) {
+//     console.error(`❌ Command failed: ${command}`);
+//     process.exit(1);
+//   }
+// };
 
 async function main() {
   console.log('\n🚀 Talawa API DevContainer Setup\n');
@@ -54,23 +54,26 @@ async function main() {
   console.log('✅ .env created for DevContainer setup');
 
   console.log('\n📦 Installing DevContainer CLI...');
-  runCommand('pnpm install -g @devcontainers/cli');
+  execSync('pnpm install -g @devcontainers/cli');
 
   if (process.platform === 'linux' && needsSudoForDocker()) {
     console.log('\n🔧 Adding user to docker group...');
-    const username = process.env.USER || process.env.USERNAME || 'ubuntu';
-    runCommand(`sudo usermod -a -G docker ${username}`);
-    console.log('ℹ️  You may need to log out and back in for docker group changes to take effect');
+
+    execSync('sudo usermod -a -G docker $USER}');
+    console.log('==========sud command check 1===========')
+    execSync ('sudo su $USER -')
+    console.log('==========sud command check pass===========')
+
   }
 
   console.log('\n🐳 Building DevContainer...');
-  runCommand('devcontainer build --workspace-folder .');
+  execSync('devcontainer build --workspace-folder .');
 
   console.log('\n🚀 Starting DevContainer...');
-  runCommand('devcontainer up --workspace-folder .');
+  execSync('devcontainer up --workspace-folder .');
 
   console.log('\n🚀 Starting API Server...');
-  runCommand('docker exec talawa-api-1 /bin/bash -c "nohup pnpm run start_development_server > /dev/null 2>&1 &"');
+  execSync('docker exec talawa-api-1 /bin/bash -c "nohup pnpm run start_development_server > /dev/null 2>&1 &"');
 
   console.log('\n⏳ Waiting for server to start...');
   await new Promise(resolve => setTimeout(resolve, 5000));
