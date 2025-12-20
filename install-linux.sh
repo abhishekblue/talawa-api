@@ -116,7 +116,7 @@ pnpm install
 echo ""
 echo "Select setup mode:"
 echo "1) Local/Hybrid (databases in Docker, API on host)"
-echo "2) Docker/DevContainer (everything in Docker)"
+echo "2) RECOMMENDED: Docker/DevContainer (everything in Docker)"
 read -p "Enter choice [1-2]: " SETUP_CHOICE
 
 case $SETUP_CHOICE in

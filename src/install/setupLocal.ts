@@ -16,6 +16,24 @@ const needsSudoForDocker = (): boolean => {
   }
 };
 
+const runCommand = (command: string, throwOnError = true) => {
+  try {
+    let finalCommand = command;
+    if (command.includes('docker') && needsSudoForDocker()) {
+      finalCommand = `sudo ${command}`;
+      console.log('ℹ️  Using sudo for Docker commands (run without sudo after logging out/in)');
+    }
+    execSync(finalCommand, { stdio: 'inherit', cwd: ROOT_DIR, env: process.env });
+  } catch (error) {
+    console.error(`❌ Command failed: ${command}`);
+    if (throwOnError) {
+      process.exit(1);
+    } else {
+      throw error;
+    }
+  }
+};
+
 async function main() {
   console.log('\n🚀 Talawa API Local Setup\n');
 
@@ -27,7 +45,7 @@ async function main() {
   }
 
   console.log('\n⚙️  Running database setup (generating JWT secret, configuring services)...');
-  execSync('pnpm tsx setup.ts');
+  runCommand('pnpm tsx setup.ts');
 
   console.log('\n🔄 Adjusting .env for local machine access...');
   let envContent = fs.readFileSync(ENV_DEST, 'utf-8');
@@ -76,7 +94,7 @@ async function main() {
   }
 
   console.log('\n🐳 Starting Database Containers...');
-  execSync('devcontainer up --workspace-folder . --skip-post-create');
+  execSync('devcontainer up --workspace-folder . --skip-post-create', { stdio: 'inherit' });
 
   console.log('\n⏳ Waiting for database services to be healthy...');
   let retries = 10;
@@ -110,7 +128,7 @@ async function main() {
   if (dataAnswer.addSampleData) {
     console.log('\n🌱 Seeding Sample Data...');
     try {
-      execSync('pnpm run add:sample_data', { stdio: 'inherit' });
+      runCommand('pnpm run add:sample_data', false);
       console.log('✅ Sample data seeded successfully');
     } catch (error) {
       console.log('⚠️  Sample data seeding failed, but you can run it manually later:');

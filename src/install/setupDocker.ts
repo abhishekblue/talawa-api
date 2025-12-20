@@ -39,20 +39,34 @@ async function main() {
     console.log('\n🔧 Adding user to docker group...');
     console.log('DEBUG: process.platform =', process.platform);
     execSync('sudo usermod -a -G docker $USER');
-    console.log('==========sud command check 1===========')
     execSync ('sudo su $USER -')
-    console.log('==========sud command check ===========')
-
   }
 
   console.log('\n🐳 Building DevContainer...');
-  execSync('devcontainer build --workspace-folder .');
+  execSync('devcontainer build --workspace-folder .', { stdio: 'inherit' });
 
   console.log('\n🚀 Starting DevContainer...');
-  execSync('devcontainer up --workspace-folder .');
+  execSync('devcontainer up --workspace-folder .', { stdio: 'inherit' });
+  
+  console.log('\n⏳ Waiting for database services to be healthy...');
+  let retries = 10;
+  while (retries > 0) {
+    try {
+      execSync('docker exec talawa-postgres-1 pg_isready -U postgres', { stdio: 'ignore' });
+      console.log('✅ Database services are ready');
+      break;
+    } catch {
+      retries--;
+      if (retries === 0) {
+        console.log('⚠️  Database may not be fully ready, continuing anyway...');
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+  }
 
   console.log('\n📊 Applying database migrations...');
-  execSync('pnpm run apply_drizzle_migrations');
+  execSync(`docker exec talawa-api-1 /bin/bash -c 'pnpm run apply_drizzle_migrations'`, { stdio: 'inherit' });
 
   const dataAnswer = await inquirer.prompt([
     {
